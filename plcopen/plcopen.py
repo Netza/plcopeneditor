@@ -122,7 +122,8 @@ def TestTextElement(text, criteria):
         result = criteria["pattern"].search(text, result.end())
     return test_result
 
-PLCOpenClasses = GenerateClassesFromXSD(os.path.join(os.path.split(__file__)[0], "tc6_xml_v201.xsd"))
+## GJB
+PLCOpenClasses = GenerateClassesFromXSD(os.path.join(os.path.split(__file__)[0], "tc6_xml_v201_gjb.xsd"))
 
 ElementNameToClass = {}
 
@@ -2028,6 +2029,13 @@ def _getexecutionOrder(instance, specific_values):
         executionOrder = 0
     specific_values["executionOrder"] = executionOrder
     
+
+# GJB
+def _getDiff(instance, specific_values):
+    specific_values['diff_added'] = instance.getdiff_added()
+    specific_values['diff_removed'] = instance.getdiff_removed()
+    specific_values['diff_changed'] = instance.getdiff_changed()
+
 def _getdefaultmodifiers(instance, infos):
     infos["negated"] = instance.getnegated()
     infos["edge"] = instance.getedge()
@@ -2076,6 +2084,8 @@ def _getvariableinfosFunction(type, input, output):
         infos["type"] = type
         specific_values = infos["specific_values"]
         specific_values["name"] = self.getexpression()
+
+        _getDiff(self, specific_values)# GJB 
         _getexecutionOrder(self, specific_values)
         if input and output:
             infos["inputs"].append(_getconnectioninfos(self, self.connectionPointIn, True, "input"))
@@ -2120,6 +2130,7 @@ def _getldelementinfosFunction(type):
         infos["type"] = type
         specific_values = infos["specific_values"]
         specific_values["name"] = self.getvariable()
+        _getDiff(self, specific_values) # GJB
         _getexecutionOrder(self, specific_values)
         specific_values["negated"] = self.getnegated()
         specific_values["edge"] = self.getedge()
@@ -2158,6 +2169,7 @@ if cls:
         infos = _getelementinfos(self)
         infos["type"] = "comment"
         infos["specific_values"]["content"] = self.getcontentText()
+        _getDiff(self, infos["specific_values"]) # GJB
         return infos
     setattr(cls, "getinfos", getinfos)
     
@@ -2195,6 +2207,8 @@ if cls:
         infos["type"] = self.gettypeName()
         specific_values = infos["specific_values"]
         specific_values["name"] = self.getinstanceName()
+
+        _getDiff(self, specific_values) # GJB
         _getexecutionOrder(self, specific_values)
         for variable in self.inputVariables.getvariable():
             infos["inputs"].append(_getconnectioninfos(variable, variable.connectionPointIn, True, "default", True))

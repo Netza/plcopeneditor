@@ -1175,15 +1175,15 @@ class ClassFactory:
             if infos is not None:                    
                 if infos["type"] != SIMPLETYPE:
                     raise ValueError("\"%s\" type is not a simple type!" % attribute["attr_type"])
-                attrname = attribute["name"]
+                attrname = attribute["name"].replace(":", "_") # GJB
                 if attribute["use"] == "optional":
                     classmembers[attrname] = None
-                    classmembers["add%s"%attrname] = generateAddMethod(attrname, self, attribute)
-                    classmembers["delete%s"%attrname] = generateDeleteMethod(attrname)
+                    classmembers["add%s"%attrname] = generateAddMethod(attribute["name"], self, attribute)
+                    classmembers["delete%s"%attrname] = generateDeleteMethod(attribute["name"])
                 else:
                     classmembers[attrname] = infos["initial"]()
-                classmembers["set%s"%attrname] = generateSetMethod(attrname)
-                classmembers["get%s"%attrname] = generateGetMethod(attrname)
+                classmembers["set%s"%attrname] = generateSetMethod(attribute["name"])
+                classmembers["get%s"%attrname] = generateGetMethod(attribute["name"])
             else:
                 raise ValueError("\"%s\" type unrecognized!" % attribute["attr_type"])
             attribute["attr_type"] = infos

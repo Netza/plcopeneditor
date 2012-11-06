@@ -1952,7 +1952,8 @@ XSD_NAMESPACE = {
     "name": {
         "type": SYNTAXATTRIBUTE, 
         "extract": {
-            "default": GenerateModelNameExtraction("member name", NCName_model)
+            ## GJB: change from NCName to QName
+            "default": GenerateModelNameExtraction("member name", QName_model)
         }
     },
     

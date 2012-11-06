@@ -1231,6 +1231,12 @@ class Viewer(EditorPanel, DebugViewer):
             element.SetSize(instance["width"], instance["height"])
         if selection is not None and selection[0].get(instance["id"], False):
             self.SelectInGroup(element)
+        #GJB
+        diff_dict = {}
+        for key in ['diff_added', 'diff_changed', 'diff_removed']:
+            diff_dict[key] = specific_values.get(key, None)
+        element.Diff.update(diff_dict)
+        #/GJB
 
     def CreateWires(self, start_connector, id, links, ids, selection=None):
         for link in links:

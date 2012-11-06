@@ -29,6 +29,11 @@ from types import *
 import datetime
 from threading import Semaphore
 
+# Diff colours GJB
+REMOVEDCOLOR = wx.Colour(255,0,0) # GJB
+ADDEDCOLOR  = wx.Colour(0,255,0)  # GJB
+CHANGEDCOLOR = wx.Colour(0,0,255) # GJB
+
 #-------------------------------------------------------------------------------
 #                               Common constants
 #-------------------------------------------------------------------------------
@@ -667,7 +672,8 @@ class Graphic_Element:
         self.ToolTipPos = None
         self.ToolTipTimer = wx.Timer(self.Parent, -1)
         self.Parent.Bind(wx.EVT_TIMER, self.OnToolTipTimer, self.ToolTipTimer)
-    
+        self.Diff = {}          #  GJB
+
     def __del__(self):
         self.ToolTipTimer.Stop()
     
@@ -1082,13 +1088,12 @@ class Graphic_Element:
     # Override this method for defining the method to call for refreshing the model of this element
     def RefreshModel(self, move=True):
         pass
-    
-    # Draws the highlightment of this element if it is highlighted (can be overwritten)
-    def DrawHighlightment(self, dc):
+
+    def DrawHighlightmentInternal(self, dc, color):
         scalex, scaley = dc.GetUserScale()
         dc.SetUserScale(1, 1)
-        dc.SetPen(MiterPen(HIGHLIGHTCOLOR))
-        dc.SetBrush(wx.Brush(HIGHLIGHTCOLOR))
+        dc.SetPen(MiterPen(color))
+        dc.SetBrush(wx.Brush(color))
         dc.SetLogicalFunction(wx.AND)
         dc.DrawRectangle(int(round((self.Pos.x - 1) * scalex)) - 2, 
                          int(round((self.Pos.y - 1) * scaley)) - 2, 
@@ -1096,9 +1101,24 @@ class Graphic_Element:
                          int(round((self.Size.height + 3) * scaley)) + 5)
         dc.SetLogicalFunction(wx.COPY)
         dc.SetUserScale(scalex, scaley)
-    
-    # Draws the handles of this element if it is selected
+
+    # Draws the highlightment of this element if it is highlighted (can be overwritten)
+    def DrawHighlightment(self, dc):
+        self.DrawHighlightmentInternal(dc, HIGHLIGHTCOLOR)
+
     def Draw(self, dc):
+        """Common drawing functions for all graphic objects"""
+
+        ### GJB
+        if self.Diff.get('diff_added', None):
+            self.DrawHighlightmentInternal(dc, ADDEDCOLOR)
+        elif self.Diff.get('diff_changed', None):
+            self.DrawHighlightmentInternal(dc, CHANGEDCOLOR)
+        elif self.Diff.get('diff_removed', None):
+            self.DrawHighlightmentInternal(dc, REMOVEDCOLOR)
+        ###/GJB
+        
+        # Draws the handles of this element if it is selected
         if not getattr(dc, "printing", False):
             if self.Highlighted:
                 self.DrawHighlightment(dc)
@@ -1451,7 +1471,8 @@ class Connector:
         self.Selected = False
         self.Highlights = []
         self.RefreshNameSize()
-    
+        self.Diff = {}          #  GJB
+
     def Flush(self):
         self.ParentBlock = None
         for wire, handle in self.Wires:
@@ -1734,13 +1755,13 @@ class Connector:
         return False
     
     # Draws the highlightment of this element if it is highlighted
-    def DrawHighlightment(self, dc):
+    def DrawHighlightmentInternal(self, dc, color):
         scalex, scaley = dc.GetUserScale()
         dc.SetUserScale(1, 1)
-        pen = MiterPen(HIGHLIGHTCOLOR, 2 * scalex + 5)
+        pen = MiterPen(color, 2 * scalex + 5)
         pen.SetCap(wx.CAP_BUTT)
         dc.SetPen(pen)
-        dc.SetBrush(wx.Brush(HIGHLIGHTCOLOR))
+        dc.SetBrush(wx.Brush(color))
         dc.SetLogicalFunction(wx.AND)
         parent_pos = self.ParentBlock.GetPosition()
         posx = parent_pos[0] + self.Pos.x
@@ -1757,7 +1778,10 @@ class Connector:
                     round(xend * scalex), round(yend * scaley))
         dc.SetLogicalFunction(wx.COPY)
         dc.SetUserScale(scalex, scaley)
-    
+
+    def DrawHighlightment(self, dc):
+        self.DrawHighlightmentInternal(dc, HIGHLIGHTCOLOR)
+
     # Adds an highlight to the connector
     def AddHighlight(self, infos, start, end, highlight_type):
         if highlight_type == ERROR_HIGHLIGHT:
@@ -1796,6 +1820,16 @@ class Connector:
     
     # Draws the connector
     def Draw(self, dc):
+
+        ### GJB
+        if self.Diff.get('diff_added', None):
+            self.DrawHighlightmentInternal(dc, ADDEDCOLOR)
+        elif self.Diff.get('diff_changed', None):
+            self.DrawHighlightmentInternal(dc, CHANGEDCOLOR)
+        elif self.Diff.get('diff_removed', None):
+            self.DrawHighlightmentInternal(dc, REMOVEDCOLOR)
+        ###/GJB
+
         if self.Selected:
             dc.SetPen(MiterPen(wx.BLUE, 3))
             dc.SetBrush(wx.WHITE_BRUSH)
@@ -2929,11 +2963,11 @@ class Wire(Graphic_Element, DebugDataConsumer):
             self.Refresh()
     
     # Draws the highlightment of this element if it is highlighted
-    def DrawHighlightment(self, dc):
+    def DrawHighlightmentInternal(self, dc, color):
         scalex, scaley = dc.GetUserScale()
         dc.SetUserScale(1, 1)
-        dc.SetPen(MiterPen(HIGHLIGHTCOLOR, (2 * scalex + 5)))
-        dc.SetBrush(wx.Brush(HIGHLIGHTCOLOR))
+        dc.SetPen(MiterPen(color, (2 * scalex + 5)))
+        dc.SetBrush(wx.Brush(color))
         dc.SetLogicalFunction(wx.AND)
         # Draw the start and end points if they are not connected or the mouse is over them
         if len(self.Points) > 0 and (not self.StartConnected or self.OverStart):
@@ -2962,6 +2996,9 @@ class Wire(Graphic_Element, DebugDataConsumer):
             self.EndConnected.DrawHighlightment(dc)
             self.EndConnected.Draw(dc)
     
+    def DrawHighlightment(self, dc):
+        self.DrawHighlightmentInternal(dc, HIGHLIGHTCOLOR)
+
     # Draws the wire lines and points
     def Draw(self, dc):
         Graphic_Element.Draw(self, dc)
@@ -3180,12 +3217,11 @@ class Comment(Graphic_Element):
     def ClearHighlight(self, highlight_type=None):
         self.Highlights = ClearHighlights(self.Highlights, highlight_type)
     
-    # Draws the highlightment of this element if it is highlighted
-    def DrawHighlightment(self, dc):
+    def DrawHighlightmentInternal(self, dc, color):
         scalex, scaley = dc.GetUserScale()
         dc.SetUserScale(1, 1)
-        dc.SetPen(MiterPen(HIGHLIGHTCOLOR))
-        dc.SetBrush(wx.Brush(HIGHLIGHTCOLOR))
+        dc.SetPen(MiterPen(color))
+        dc.SetBrush(wx.Brush(color))
         dc.SetLogicalFunction(wx.AND)
         
         left = (self.Pos.x - 1) * scalex - 2
@@ -3202,7 +3238,11 @@ class Comment(Graphic_Element):
         
         dc.SetLogicalFunction(wx.COPY)
         dc.SetUserScale(scalex, scaley)
-        
+
+    # Draws the highlightment of this element if it is highlighted
+    def DrawHighlightment(self, dc):
+        self.DrawHighlightmentInternal(dc, HIGHLIGHTCOLOR)
+
     # Draws the comment and its content
     def Draw(self, dc):
         Graphic_Element.Draw(self, dc)
